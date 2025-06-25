@@ -20,7 +20,7 @@ class Item(BaseModel):
 # Output is not accurately represented by a single Item model, so we use a list wrapper.
 # TODO: Figure out how to use the `List` type directly in the model definition.
 class ItemsList(BaseModel):
-    items: List[Item]
+    receipt_items: List[Item] = Field(alias="items")
 
 
 # Summary model
@@ -81,7 +81,7 @@ def parse_walmart_pdf(filepath):
         items_result_object = items_response.candidates[0].content.parts[0].text
         print("items_result_object:", items_result_object)
         items_data = ItemsList.model_validate_json(items_result_object)
-        items_list = [item.model_dump() for item in items_data.items]
+        items_list = [item.model_dump() for item in items_data.receipt_items]
 
         # --- SECOND API CALL: Extract Summary ---
         print("Making API call for summary details...")
