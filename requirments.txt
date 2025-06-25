@@ -1,0 +1,5 @@
+Flask
+google-generativeai
+pydantic
+python-dotenv
+werkzeug
