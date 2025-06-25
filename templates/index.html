@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WallyParse - Debug View</title>
+    <!-- <link href="https://fonts.googleapis.com/css2" rel="stylesheet"> -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+</head>
+<body>
+    <header>
+        <h1>WallyParse - Raw Data View</h1>
+        <p>This page displays the raw JSON data received from the backend after processing the PDF.</p>
+    </header>
+
+    <div class="card upload-card">
+        <h2>Upload Receipt</h2>
+        <form action="/upload" method="post" enctype="multipart/form-data">
+            <input type="file" name="file" accept=".pdf" required>
+            <button type="submit" class="btn-primary">Process PDF</button>
+        </form>
+    </div>
+
+    {% if error %}
+        <div class="error-box">
+            <p><strong>Error:</strong> {{ error }}</p>
+        </div>
+    {% endif %}
+
+    {% if receipt %}
+        <h2>Parsed Receipt Object:</h2>
+        <pre>{{ receipt | tojson(indent=2) }}</pre>
+    {% else %}
+        <p>No receipt data to display. Please upload a PDF.</p>
+    {% endif %}
+
+</body>
+</html>
