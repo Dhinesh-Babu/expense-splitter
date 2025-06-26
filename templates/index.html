@@ -31,6 +31,26 @@
     {% if receipt %}
         <h2>Parsed Receipt Object:</h2>
         <pre>{{ receipt | tojson(indent=2) }}</pre>
+        <table>
+            <thead>
+                <tr>
+                <th>Name</th>
+                <th>Quantity</th>
+                <th>Cost</th>
+                <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in receipt.receipt_items %}
+                <tr>
+                <td>{{ item.name }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>${{ "%.2f" | format(item.cost) }}</td>
+                <td>{{ item.status }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     {% else %}
         <p>No receipt data to display. Please upload a PDF.</p>
     {% endif %}

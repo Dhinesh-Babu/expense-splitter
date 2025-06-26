@@ -109,7 +109,7 @@ def parse_walmart_pdf(filepath):
 
         # --- COMBINE RESULTS ---
         print("Successfully parsed both items and summary.")
-        receipt_dict = {"items": items_list, "summary": summary_dict}
+        receipt_dict = {"receipt_items": items_list, "summary": summary_dict}
 
         return receipt_dict
 
