@@ -1,21 +1,37 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Expense Splitter - Debug View</title>
-    <!-- <link href="https://fonts.googleapis.com/css2" rel="stylesheet"> -->
+    <title>Expense Splitter</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-
+    <style>
+        /* Basic styling for clarity - can be moved to style.css */
+        body { font-family: sans-serif; background-color: #f4f7f6; color: #333; margin: 0; padding: 2em; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 2em; }
+        th, td { padding: 0.75em; text-align: left; border-bottom: 1px solid #ddd; }
+        thead th { background-color: #e9ecef; }
+        tfoot td, tfoot th { font-weight: bold; background-color: #f8f9fa; }
+        .cost-output, .final-total { text-align: right; }
+        .person-a { color: #007bff; }
+        .person-b { color: #28a745; }
+        .person-c { color: #dc3545; }
+        .card { background: white; padding: 2em; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin-bottom: 2em; }
+        .btn-primary { background-color: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; }
+        .error-box { background-color: #f8d7da; color: #721c24; padding: 1em; border-radius: 4px; border: 1px solid #f5c6cb; }
+        input[type="number"] { width: 100px; text-align: center; }
+    </style>
 </head>
+
 <body>
+
     <header>
-        <h1>Expense Splitter - Raw Data View</h1>
-        <p>This page displays the raw JSON data received from the backend after processing the PDF.</p>
+        <h1>Expense Splitter</h1>
     </header>
 
-    <div class="card upload-card">
-        <h2>Upload Receipt</h2>
+    <div class="card">
+        <h2>Upload Your Receipt</h2>
         <form action="/upload" method="post" enctype="multipart/form-data">
             <input type="file" name="file" accept=".pdf" required>
             <button type="submit" class="btn-primary">Process PDF</button>
@@ -23,36 +39,201 @@
     </div>
 
     {% if error %}
-        <div class="error-box">
-            <p><strong>Error:</strong> {{ error }}</p>
-        </div>
+    <div class="error-box">
+        <p><strong>Error:</strong> {{ error }}</p>
+    </div>
     {% endif %}
 
     {% if receipt %}
-        <h2>Parsed Receipt Object:</h2>
-        <pre>{{ receipt | tojson(indent=2) }}</pre>
-        <table>
-            <thead>
-                <tr>
-                <th>Name</th>
-                <th>Quantity</th>
-                <th>Cost</th>
-                <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for item in receipt.receipt_items %}
-                <tr>
+    <div id="summary-data"
+         data-tax="{{ receipt.summary.tax }}"
+         data-tip="{{ receipt.summary.tip }}"
+         data-subtotal="{{ receipt.summary.subtotal }}"
+         data-total="{{ receipt.summary.total }}"
+         style="display: none;">
+    </div>
+
+    <h2>1. Assign Item Shares</h2>
+    <p>For each item, enter the number of shares for each person.</p>
+    <table>
+        <thead>
+            <tr>
+                <th>Item Name</th>
+                <th class="cost-output">Cost</th>
+                <th class="person-a">Shares for A</th>
+                <th class="person-b">Shares for B</th>
+                <th class="person-c">Shares for C</th>
+                <th class="person-a cost-output">A Pays</th>
+                <th class="person-b cost-output">B Pays</th>
+                <th class="person-c cost-output">C Pays</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in receipt.receipt_items %}
+            <tr class="item-row" data-cost="{{ item.cost }}">
                 <td>{{ item.name }}</td>
-                <td>{{ item.quantity }}</td>
-                <td>${{ "%.2f" | format(item.cost) }}</td>
-                <td>{{ item.status }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                <td class="cost-output">${{ "%.2f" | format(item.cost) }}</td>
+                <td><input type="number" class="share-input" data-person="A" value="0" min="0"></td>
+                <td><input type="number" class="share-input" data-person="B" value="0" min="0"></td>
+                <td><input type="number" class="share-input" data-person="C" value="0" min="0"></td>
+                <td class="cost-output" data-person-pays="A">$0.00</td>
+                <td class="cost-output" data-person-pays="B">$0.00</td>
+                <td class="cost-output" data-person-pays="C">$0.00</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <th colspan="5">ITEM SUBTOTAL</th>
+                <th id="subtotal-pays-A" class="cost-output person-a">$0.00</th>
+                <th id="subtotal-pays-B" class="cost-output person-b">$0.00</th>
+                <th id="subtotal-pays-C" class="cost-output person-c">$0.00</th>
+            </tr>
+        </tfoot>
+    </table>
+
+    <h2>2. Final Bill Summary</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Description</th>
+                <th class="person-a cost-output">Person A Pays</th>
+                <th class="person-b cost-output">Person B Pays</th>
+                <th class="person-c cost-output">Person C Pays</th>
+                <th class="cost-output">Original Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Subtotal</td>
+                <td id="summary-subtotal-A" class="cost-output person-a">$0.00</td>
+                <td id="summary-subtotal-B" class="cost-output person-b">$0.00</td>
+                <td id="summary-subtotal-C" class="cost-output person-c">$0.00</td>
+                <td id="summary-subtotal-orig" class="cost-output">$0.00</td>
+            </tr>
+            <tr>
+                <td>Tax</td>
+                <td id="summary-tax-A" class="cost-output person-a">$0.00</td>
+                <td id="summary-tax-B" class="cost-output person-b">$0.00</td>
+                <td id="summary-tax-C" class="cost-output person-c">$0.00</td>
+                <td id="summary-tax-orig" class="cost-output">$0.00</td>
+            </tr>
+            <tr>
+                <td>Tip</td>
+                <td id="summary-tip-A" class="cost-output person-a">$0.00</td>
+                <td id="summary-tip-B" class="cost-output person-b">$0.00</td>
+                <td id="summary-tip-C" class="cost-output person-c">$0.00</td>
+                <td id="summary-tip-orig" class="cost-output">$0.00</td>
+            </tr>
+        </tbody>
+        <tfoot>
+            <tr>
+                <th>FINAL TOTAL</th>
+                <th id="final-total-A" class="cost-output person-a">$0.00</th>
+                <th id="final-total-B" class="cost-output person-b">$0.00</th>
+                <th id="final-total-C" class="cost-output person-c">$0.00</th>
+                <th id="final-total-orig" class="cost-output">$0.00</th>
+            </tr>
+        </tfoot>
+    </table>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- CONFIGURATION ---
+            const PERSONS = ['A', 'B', 'C'];
+
+            // --- ELEMENT CACHING ---
+            const summaryEl = document.getElementById('summary-data');
+            const itemRows = document.querySelectorAll('.item-row');
+            const shareInputs = document.querySelectorAll('.share-input');
+
+            // --- DATA FROM SERVER ---
+            const serverData = {
+                tax: parseFloat(summaryEl.dataset.tax),
+                tip: parseFloat(summaryEl.dataset.tip),
+                subtotal: parseFloat(summaryEl.dataset.subtotal),
+                total: parseFloat(summaryEl.dataset.total)
+            };
+
+            // --- HELPER FUNCTIONS ---
+            const formatCurrency = (amount) => `$${amount.toFixed(2)}`;
+            const getElement = (id) => document.getElementById(id);
+
+            // --- CORE LOGIC ---
+            function updateItemRow(row) {
+                const itemCost = parseFloat(row.dataset.cost);
+                const shares = {};
+                let totalShares = 0;
+
+                PERSONS.forEach(p => {
+                    const shareValue = parseFloat(row.querySelector(`.share-input[data-person="${p}"]`).value) || 0;
+                    shares[p] = shareValue;
+                    totalShares += shareValue;
+                });
+
+                const personCosts = {};
+                PERSONS.forEach(p => {
+                    const costForPerson = totalShares > 0 ? (itemCost * shares[p]) / totalShares : 0;
+                    personCosts[p] = costForPerson;
+                    row.querySelector(`[data-person-pays="${p}"]`).textContent = formatCurrency(costForPerson);
+                });
+
+                return personCosts;
+            }
+
+            function updateSummary(personSubtotals) {
+                const overallSubtotal = PERSONS.reduce((sum, p) => sum + personSubtotals[p], 0);
+
+                PERSONS.forEach(p => {
+                    const subtotal = personSubtotals[p];
+                    const proportion = overallSubtotal > 0 ? subtotal / overallSubtotal : 0;
+                    const tax = serverData.tax * proportion;
+                    const tip = serverData.tip * proportion;
+                    const total = subtotal + tax + tip;
+
+                    // Update summary table cells for each person
+                    getElement(`summary-subtotal-${p}`).textContent = formatCurrency(subtotal);
+                    getElement(`summary-tax-${p}`).textContent = formatCurrency(tax);
+                    getElement(`summary-tip-${p}`).textContent = formatCurrency(tip);
+                    getElement(`final-total-${p}`).textContent = formatCurrency(total);
+                });
+
+                // Update "Original Total" column
+                getElement('summary-subtotal-orig').textContent = formatCurrency(serverData.subtotal);
+                getElement('summary-tax-orig').textContent = formatCurrency(serverData.tax);
+                getElement('summary-tip-orig').textContent = formatCurrency(serverData.tip);
+                getElement('final-total-orig').textContent = formatCurrency(serverData.total);
+            }
+
+            function recalculateTotals() {
+                const personSubtotals = { A: 0, B: 0, C: 0 };
+
+                // 1. Calculate costs for each item and aggregate subtotals
+                itemRows.forEach(row => {
+                    const personCosts = updateItemRow(row);
+                    PERSONS.forEach(p => personSubtotals[p] += personCosts[p]);
+                });
+
+                // 2. Update item subtotal footer
+                PERSONS.forEach(p => {
+                    getElement(`subtotal-pays-${p}`).textContent = formatCurrency(personSubtotals[p]);
+                });
+
+                // 3. Calculate final summary based on new subtotals
+                updateSummary(personSubtotals);
+            }
+
+            // --- EVENT LISTENERS ---
+            shareInputs.forEach(input => {
+                input.addEventListener('input', recalculateTotals);
+            });
+
+            // --- INITIALIZATION ---
+            recalculateTotals(); // Run once on page load to set initial state
+        });
+    </script>
     {% else %}
-        <p>No receipt data to display. Please upload a PDF.</p>
+    <p>No receipt data to display. Please upload a PDF to begin.</p>
     {% endif %}
 
 </body>
